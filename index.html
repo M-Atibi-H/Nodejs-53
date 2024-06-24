@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-image: url('1718605413739.jpg');
+      background-size: cover;
+    }
+    form {
+      max-width: 300px;
+      margin: 0 auto 20px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      background-color: rgba(249, 249, 249, 0.8);
+    }
+    input[type="text"], input[type="password"] {
+      width: calc(100% - 20px);
+      padding: 10px;
+      margin: 8px 0;
+      display: inline-block;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    input[type="submit"] {
+      background-color: #4CAF50;
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    input[type="submit"]:hover {
+      background-color: #45a049;
+    }
+    #navbar {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 600px;
+      margin-bottom: 20px;
+    }
+    .nav-button {
+      cursor: pointer;
+      color: blue;
+      text-decoration: underline;
+    }
+    #dashboardSection, #chatSection {
+      display: none;
+      max-width: 600px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    #messages {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 300px;
+      overflow-y: scroll;
+      background-color: rgba(249, 249, 249, 0.8);
+    }
+    #messages p {
+      margin: 10px 0;
+    }
+    #newMessage {
+      width: calc(100% - 22px);
+      padding: 10px;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #sendMessage {
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #userList {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .user {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .user img {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+    }
+    .post {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin: 10px 0;
+      background-color: rgba(249, 249, 249, 0.8);
+      position: relative;
+    }
+    .post img, .post video {
+      max-width: 100%;
+    }
+    .post .username {
+      font-weight: bold;
+    }
+    .reaction-buttons {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      display: flex;
+      gap: 5px;
+    }
+    .reaction-buttons button {
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    .comments {
+      margin-top: 10px;
+      background-color: #f9f9f9;
+      padding: 10px;
+    }
+    .comment {
+      margin-bottom: 5px;
+    }
+    .comment-form {
+      display: flex;
+      margin-top: 10px;
+    }
+    .comment-input {
+      flex: 1;
+      padding: 5px;
+    }
+    .comment-button {
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chat Page</h1>
+
+  <div id="loginSection">
+    <h2>Login</h2>
+    <form id="loginForm">
+      <label for="loginUsername">Username:</label>
+      <input type="text" id="loginUsername" name="loginUsername" required>
+      <label for="loginPassword">Password:</label>
+      <input type="password" id="loginPassword" name="loginPassword" required>
+      <input type="submit" value="Login">
+    </form>
+    <p>Don't have an account? <a href="#" id="showSignup">Sign Up</a></p>
+  </div>
+
+  <div id="signupSection" style="display: none;">
+    <h2>Sign Up</h2>
+    <form id="signupForm">
+      <label for="signupUsername">Username:</label>
+      <input type="text" id="signupUsername" name="signupUsername" required>
+      <label for="signupPassword">Password:</label>
+      <input type="password" id="signupPassword" name="signupPassword" required>
+      <label for="signupImage">Cover Image URL:</label>
+      <input type="text" id="signupImage" name="signupImage" placeholder="Image URL">
+      <input type="submit" value="Sign Up">
+    </form>
+    <p>Already have an account? <a href="#" id="showLogin">Login</a></p>
+  </div>
+
+  <div id="navbar">
+    <span id="goToDashboard" class="nav-button">Dashboard</span>
+    <span id="goToChats" class="nav-button">Chats</span>
+  </div>
+
+  <div id="dashboardSection">
+    <h2>Dashboard</h2>
+    <form id="postForm" enctype="multipart/form-data">
+      <input type="file" id="media" name="media" required>
+      <input type="submit" value="Upload">
+    </form>
+    <div id="posts"></div>
+  </div>
+
+  <div id="chatSection">
+    <h2>Chat</h2>
+    <div id="messages"></div>
+    <input type="text" id="newMessage" placeholder="Type a message...">
+    <button id="sendMessage">Send</button>
+  </div>
+
+  <div id="userList"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const userList = document.getElementById('userList');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const loginSection = document.getElementById('loginSection');
+    const signupSection = document.getElementById('signupSection');
+    const dashboardSection = document.getElementById('dashboardSection');
+    const chatSection = document.getElementById('chatSection');
+    const navbar = document.getElementById('navbar');
+    const goToDashboard = document.getElementById('goToDashboard');
+    const goToChats = document.getElementById('goToChats');
+    const postForm = document.getElementById('postForm');
+    const postsDiv = document.getElementById('posts');
+    const messagesDiv = document.getElementById('messages');
+    const newMessageInput = document.getElementById('newMessage');
+    const sendMessageButton = document.getElementById('sendMessage');
+    let currentUser = null;
+
+    loginForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      currentUser = {
+        username: loginForm.loginUsername.value,
+        password: loginForm.loginPassword.value
+      };
+      loginSection.style.display = 'none';
+      navbar.style.display = 'flex';
+      dashboardSection.style.display = 'block';
+      loadPosts();
+    });
+
+    signupForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      currentUser = {
+        username: signupForm.signupUsername.value,
+        password: signupForm.signupPassword.value,
+        coverImage: signupForm.signupImage.value
+      };
+      signupSection.style.display = 'none';
+      navbar.style.display = 'flex';
+      dashboardSection.style.display = 'block';
+      loadPosts();
+    });
+
+    document.getElementById('showSignup').addEventListener('click', (event) => {
+      event.preventDefault();
+      loginSection.style.display = 'none';
+      signupSection.style.display = 'block';
+    });
+
+    document.getElementById('showLogin').addEventListener('click', (event) => {
+      event.preventDefault();
+      signupSection.style.display = 'none';
+      loginSection.style.display = 'block';
+    });
+
+    goToDashboard.addEventListener('click', () => {
+      dashboardSection.style.display = 'block';
+      chatSection.style.display = 'none';
+    });
+
+    goToChats.addEventListener('click', () => {
+      dashboardSection.style.display = 'none';
+      chatSection.style.display = 'block';
+    });
+
+    postForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const formData = new FormData();
+      formData.append('media', postForm.media.files[0]);
+      formData.append('username', currentUser.username);
+
+      fetch('/upload', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(post => {
+        addPostToDOM(post);
+        postForm.reset();
+      })
+      .catch(error => console.error('Error uploading media:', error));
+    });
+
+    function loadPosts() {
+      fetch('/posts')
+      .then(response => response.json())
+      .then(posts => {
+        postsDiv.innerHTML = '';
+        posts.forEach((post, index) => addPostToDOM(post, index));
+      })
+      .catch(error => console.error('Error fetching posts:', error));
+    }
+
+    function addPostToDOM(post, index) {
+      const postDiv = document.createElement('div');
+      postDiv.className = 'post';
+      postDiv.innerHTML = `
+        <div class="username">${post.username}</div>
+        ${post.type === 'image' ? `<img src="${post.url}" alt="Post image">` : `<video src="${post.url}" controls></video>`}
+        <div class="comments">
+          ${post.comments.map(comment => `
+            <div class="comment">
+              <span class="username">${comment.username}:</span>
+              <span>${comment.comment}</span>
+            </div>`).join('')}
+        </div>
+        <form class="comment-form">
+          <input type="text" class="comment-input" placeholder="Add a comment...">
+          <button type="submit" class="comment-button">Send</button>
+        </form>
+      `;
+
+      postDiv.querySelector('.comment-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const commentInput = postDiv.querySelector('.comment-input');
+        const comment = commentInput.value;
+
+        fetch('/comment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ postId: index, username: currentUser.username, comment })
+        })
+        .then(response => response.json())
+        .then(updatedPost => {
+          postDiv.querySelector('.comments').innerHTML = updatedPost.comments.map(comment => `
+            <div class="comment">
+              <span class="username">${comment.username}:</span>
+              <span>${comment.comment}</span>
+            </div>`).join('');
+          commentInput.value = '';
+        })
+        .catch(error => console.error('Error posting comment:', error));
+      });
+
+      postsDiv.appendChild(postDiv);
+    }
+
+    socket.on('history', function(data) {
+      messagesDiv.innerHTML = data;
+    });
+
+    socket.on('chat', function(message) {
+      messagesDiv.innerHTML += `<p>${message.username}: ${message.text}</p>`;
+    });
+
+    sendMessageButton.addEventListener('click', () => {
+      const message = { username: currentUser.username, text: newMessageInput.value };
+      socket.emit('chat', message);
+      newMessageInput.value = '';
+    });
+  </script>
+</body>
+</html>
